@@ -149,10 +149,19 @@ public class LocationUtil {
      * 判断GPS是否开启
      */
     public void initGPS() {
-        //判断GPS是否开启，没有开启，则开启
-        if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
-            openGPSDialog();
+        List<String> allProviders = locationManager.getAllProviders();
+        if (!allProviders.contains(LocationManager.GPS_PROVIDER)) {
+            // 如果不支持 gps ，则通过 network 判断
+            if(!locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)){
+                openGPSDialog();
+            }
+        } else {
+            //判断GPS是否开启，没有开启，则开启
+            if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+                openGPSDialog();
+            }
         }
+
     }
 
     /**
