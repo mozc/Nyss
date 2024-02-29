@@ -5,6 +5,7 @@ import static com.example.nsyy.code_scan.common.CodeScanCommon.*;
 import android.Manifest;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -33,6 +34,7 @@ import com.example.nsyy.alarm.LongRunningService;
 import com.example.nsyy.code_scan.CommonActivity;
 import com.example.nsyy.code_scan.DefinedActivity;
 import com.example.nsyy.config.MySharedPreferences;
+import com.example.nsyy.message.FileHelper;
 import com.example.nsyy.service.NsServerService;
 import com.example.nsyy.service.NsyyServerBroadcastReceiver;
 import com.example.nsyy.utils.BlueToothUtil;
@@ -46,8 +48,12 @@ import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
 
 public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
 
+    private static final int MINIMUM_VERSION_CODE = 10;
+
     public static final String TAG = "Nsyy";
-    private static final String LOAD_RUL = "http://oa.nsyy.com.cn:6060";
+
+    private static String LOAD_RUL = "";
+
     // 测试扫码功能
     //private static final String LOAD_RUL = "https://dnswc2-vue-demo.site.laf.dev/";
     private WebView webView;
@@ -80,14 +86,37 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        MySharedPreferences.init(this);
+
+//        // TODO 当前最新版本，最小支持的版本具体如何获取？ 由 OA 提供接口提供？
+//        // 判断当前版本，如果版本太小，直接提醒用户升级
+//        int currentVersionCode = getCurrentVersionCode();
+//        // Storing app version
+//        SharedPreferences.Editor editor = MySharedPreferences.getSharedPreferences().edit();
+//        editor.putInt("currentVersion", currentVersionCode);
+//        editor.apply();
+//        if (currentVersionCode < MINIMUM_VERSION_CODE) {
+//            showUpgradePrompt();
+//        }
+
+
+        // 初始化 WebView
+        webView = findViewById(R.id.webView);
+        String loadUrl = MySharedPreferences.getSharedPreferences().getString("load_url", "");
+        if (!loadUrl.isEmpty() && !loadUrl.equals("")) {
+            LOAD_RUL = loadUrl;
+            initView();
+        } else {
+            // Ask the user to choose a website
+            showWebsiteChooserDialog();
+        }
+
         // 启动定时任务 每十分钟打印一次时间
         Intent intent = new Intent(this, LongRunningService.class);
         startService(intent);
 
         // 检查权限: 这里需要开启位置权限 & 位置服务 TODO 其他权限
         PermissionUtil.checkLocationPermission(this);
-
-        initView();
 
         // 启动 web server
         registerReceiver(nsyyServerBroadcastReceiver, new IntentFilter("NsyyServerBroadcastReceiver"));
@@ -98,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         NotificationUtil.getInstance().setContext(this);
         NotificationUtil.getInstance().initNotificationChannel();
 
+
         // 检查是否开启位置服务
         LocationUtil.getInstance().setContext(this);
         LocationUtil.getInstance().initGPS();
@@ -105,8 +135,64 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // 检查是否开启蓝牙权限 & 初始化
         PermissionUtil.checkBlueToothPermission(this);
         BlueToothUtil.getInstance().init(this);
+    }
 
-        MySharedPreferences.init(this);
+//    private int getCurrentVersionCode() {
+//        try {
+//            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return -1;
+//        }
+//    }
+//
+//    private void showUpgradePrompt() {
+//        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+//        builder.setTitle("Update Required");
+//        builder.setMessage("Your app is outdated. Please update to the latest version.");
+//
+//        // Positive button opens Google Play Store for the app
+//        builder.setPositiveButton("Update", new DialogInterface.OnClickListener() {
+//            @Override
+//            public void onClick(DialogInterface dialog, int which) {
+//                startActivity(new Intent(MainActivity.this, UpdateActivity.class));
+//            }
+//        });
+//
+//        // Show the dialog
+//        builder.show();
+//    }
+
+    private void showWebsiteChooserDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择要访问的网站：")
+                .setItems(R.array.website_choices, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Load the selected website
+                        loadWebsite(which);
+                    }
+                });
+
+        // Create and show the alert dialog
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    private void loadWebsite(int choice) {
+        // Array of websites
+        String[] websites = getResources().getStringArray(R.array.websites);
+
+        if (choice >= 0 && choice < websites.length) {
+            String selectedWebsite = websites[choice];
+            LOAD_RUL = selectedWebsite;
+            initView();
+        } else {
+            LOAD_RUL = "http://oa.nsyy.com.cn:6060";
+            initView();
+        }
+        SharedPreferences.Editor editor = MySharedPreferences.getSharedPreferences().edit();
+        editor.putString("load_url", LOAD_RUL);
+        editor.apply();
     }
 
     private void initView() {
@@ -130,7 +216,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             }
         });
 
-        webView = findViewById(R.id.webView);
+        if (webView == null) {
+            webView = findViewById(R.id.webView);
+        }
 
         // Enable Javascript
         WebSettings webSettings = webView.getSettings();
