@@ -127,6 +127,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         NotificationUtil.getInstance().setContext(this);
         NotificationUtil.getInstance().initNotificationChannel();
 
+        FileHelper.getInstance().setContext(this);
 
         // 检查是否开启位置服务
         LocationUtil.getInstance().setContext(this);

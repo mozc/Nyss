@@ -191,4 +191,28 @@ public class NsyyController {
             return returnData;
         }
     }
+
+    @CrossOrigin(methods = {RequestMethod.DELETE})
+    @DeleteMapping(path = "/load_url")
+    public ReturnData delete_load_url() {
+        ReturnData returnData = new ReturnData();
+        try {
+
+            // Storing a setting
+            SharedPreferences.Editor editor = MySharedPreferences.getSharedPreferences().edit();
+            editor.remove("load_url");
+            editor.commit();
+
+            returnData.setSuccess(true);
+            returnData.setCode(200);
+            return returnData;
+        } catch (Exception e) {
+            returnData.setCode(FAILED_TO_GET_LOCATION);
+            returnData.setSuccess(false);
+
+            returnData.setErrorMsg("The load_url delete failed");
+            return returnData;
+        }
+    }
+
 }

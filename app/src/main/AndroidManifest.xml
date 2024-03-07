@@ -41,6 +41,14 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
+    <!-- Internal Storage Permissions -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
+
+
     <application
         android:name=".permission.AppApplication"
         android:icon="@mipmap/ic_nsyy"
@@ -51,6 +59,9 @@
         android:requestLegacyExternalStorage="true"
         android:theme="@style/AppTheme"
         tools:ignore="UnusedAttribute">
+<!--        <activity-->
+<!--            android:name=".UpdateActivity"-->
+<!--            android:exported="false" />-->
         <activity
             android:name=".code_scan.CommonActivity"
             android:exported="false" />
