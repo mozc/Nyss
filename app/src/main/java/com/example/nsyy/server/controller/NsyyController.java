@@ -4,9 +4,11 @@ import static com.example.nsyy.server.api.ReturnData.ERROR.FAILED_TO_GET_LOCATIO
 
 import com.example.nsyy.config.MySharedPreferences;
 import com.example.nsyy.exception.BluetoothException;
+import com.example.nsyy.server.api.AppInfo;
 import com.example.nsyy.server.api.Notification;
 import com.example.nsyy.server.api.UserInfo;
 import com.example.nsyy.server.api.ReturnData;
+import com.example.nsyy.utils.AppVersionUtil;
 import com.example.nsyy.utils.BlueToothUtil;
 import com.example.nsyy.utils.LocationUtil;
 import com.example.nsyy.utils.NotificationUtil;
@@ -212,6 +214,17 @@ public class NsyyController {
 
             returnData.setErrorMsg("The load_url delete failed");
             return returnData;
+        }
+    }
+
+    @CrossOrigin(methods = {RequestMethod.GET})
+    @GetMapping("/app_version")
+    public AppInfo get_app_version() {
+        try {
+            double version = AppVersionUtil.getInstance().getCurrentVersionCode();
+            return new AppInfo(true, 200, "", version, "android");
+        } catch (Exception e) {
+            return new AppInfo(false, 500, e.getMessage(), -1.0, "android");
         }
     }
 
