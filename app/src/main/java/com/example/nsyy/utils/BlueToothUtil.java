@@ -34,7 +34,7 @@ public class BlueToothUtil {
     //采用Double CheckLock(DCL)实现单例
     public static BlueToothUtil getInstance() {
         if (uniqueInstance == null) {
-            synchronized (LocationUtil.class) {
+            synchronized (BlueToothUtil.class) {
                 if (uniqueInstance == null) {
                     uniqueInstance = new BlueToothUtil();
                 }
