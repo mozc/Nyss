@@ -1,7 +1,5 @@
 package com.example.nsyy;
 
-import static com.example.nsyy.code_scan.common.CodeScanCommon.*;
-
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.DownloadManager;
@@ -16,8 +14,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Parcelable;
-import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -39,8 +35,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import com.example.nsyy.alarm.LongRunningService;
-import com.example.nsyy.code_scan.CommonActivity;
-import com.example.nsyy.code_scan.DefinedActivity;
 import com.example.nsyy.config.MySharedPreferences;
 import com.example.nsyy.message.FileHelper;
 import com.example.nsyy.service.NsServerService;
@@ -60,7 +54,9 @@ import java.util.Base64;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
-
+    public static final int DEFAULT_VIEW = 0x22;
+    private static final int REQUEST_CODE_SCAN = 0X01;
+    public static final int REQUEST_FILE_PERMISSION_CODE = 666;
     public static final String TAG = "Nsyy";
 
     private static String LOAD_RUL = "";
@@ -476,75 +472,23 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         unregisterReceiver(noticeReceiver);
     }
 
-
     @JavascriptInterface
     public void scanCode(){
-        // 多种模式可选： https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-overview-0000001050282308
-//        loadScanKitBtnClick();
+        // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
+        // 官方案例： https://github.com/huaweicodelabs/ScanKit/blob/master/DefaultView-java/app/src/main/java/com/example/scankitdemo/MainActivity.java
+
         newViewBtnClick();
-//        multiProcessorSynBtnClick();
-//        multiProcessorAsynBtnClick();
-    }
-
-    // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
-
-    /**
-     * Call the default view.
-     */
-    public void loadScanKitBtnClick() {
-        requestPermission(CAMERA_REQ_CODE, DECODE);
     }
 
     /**
      * Call the customized view.
      */
     public void newViewBtnClick() {
-//        requestPermission(DEFINED_CODE, DECODE);
         // CAMERA_REQ_CODE为用户自定义，用于接收权限校验结果的请求码
-        this.requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, DEFINED_CODE);
-    }
-
-    /**
-     * Call the MultiProcessor API in synchronous mode.
-     */
-    public void multiProcessorSynBtnClick() {
-//        requestPermission(MULTIPROCESSOR_SYN_CODE, DECODE);
-        this.requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, MULTIPROCESSOR_SYN_CODE);
-
-    }
-
-    /**
-     * Call the MultiProcessor API in asynchronous mode.
-     */
-    public void multiProcessorAsynBtnClick() {
-        requestPermission(MULTIPROCESSOR_ASYN_CODE, DECODE);
-    }
-
-    /**
-     * Apply for permissions.
-     */
-    private void requestPermission(int requestCode, int mode) {
-        if (mode == DECODE) {
-            decodePermission(requestCode);
-        } else if (mode == GENERATE) {
-            // generatePermission(requestCode);
-        }
-    }
-
-    /**
-     * Apply for permissions.
-     */
-    private void decodePermission(int requestCode) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.requestPermissions(
-                    this,
-                    new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_MEDIA_IMAGES},
-                    requestCode);
-        } else {
-            ActivityCompat.requestPermissions(
-                    this,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            this.requestPermissions(
                     new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE},
-                    requestCode);
+                    DEFAULT_VIEW);
         }
     }
 
@@ -557,56 +501,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (permissions == null || grantResults == null) {
-            return;
-        }
-
-        if (grantResults.length < 2 || grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        //Default View Mode
-        if (requestCode == CAMERA_REQ_CODE) {
-            ScanUtil.startScan(this, REQUEST_CODE_SCAN_ONE, new HmsScanAnalyzerOptions.Creator().create());
-        }
-
-        //Customized View Mode
-        if (requestCode == DEFINED_CODE) {
-            Intent intent = new Intent(this, DefinedActivity.class);
-            try {
-                this.startActivityForResult(intent, REQUEST_CODE_DEFINE);
-            } catch (Exception e) {
-                System.out.println("未成功打开扫码页面，请检查");
-                e.printStackTrace();
-                // Handle the exception
-            }
-        }
-
-        //Multiprocessor Synchronous Mode
-        if (requestCode == MULTIPROCESSOR_SYN_CODE) {
-            Intent intent = new Intent(this, CommonActivity.class);
-            intent.putExtra(DECODE_MODE, MULTIPROCESSOR_SYN_CODE);
-
-            try {
-                this.startActivityForResult(intent, REQUEST_CODE_SCAN_MULTI);
-            } catch (Exception e) {
-                e.printStackTrace();
-                // Handle the exception
-            }
-        }
-        //Multiprocessor Asynchronous Mode
-        if (requestCode == MULTIPROCESSOR_ASYN_CODE) {
-            Intent intent = new Intent(this, CommonActivity.class);
-            intent.putExtra(DECODE_MODE, MULTIPROCESSOR_ASYN_CODE);
-
-            try {
-                this.startActivityForResult(intent, REQUEST_CODE_SCAN_MULTI);
-            } catch (Exception e) {
-                e.printStackTrace();
-                // Handle the exception
-            }
-        }
-
+        // 请求文件权限
         if (requestCode == REQUEST_FILE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 用户授予了存储权限，开始下载
@@ -617,6 +512,16 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                 Toast.makeText(MainActivity.this, "没有存储权限，无法下载文件", Toast.LENGTH_SHORT).show();
             }
         }
+
+        // 扫码-相机权限
+        if (permissions == null || grantResults == null || grantResults.length < 2 || grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        if (requestCode == DEFAULT_VIEW) {
+            //start ScankitActivity for scanning barcode
+            ScanUtil.startScan(MainActivity.this, REQUEST_CODE_SCAN, new HmsScanAnalyzerOptions.Creator().setHmsScanTypes(HmsScan.ALL_SCAN_TYPE).create());
+        }
+
     }
 
     /**
@@ -629,53 +534,38 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //receive result after your activity finished scanning
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK || data == null) {
             return;
         }
-        //Default View
-        if (requestCode == REQUEST_CODE_SCAN_ONE) {
-            HmsScan obj = data.getParcelableExtra(ScanUtil.RESULT);
-            if (obj != null) {
-                Toast.makeText(this,obj.originalValue,Toast.LENGTH_SHORT).show();
-            }
-            //MultiProcessor & Bitmap
-        } else if (requestCode == REQUEST_CODE_SCAN_MULTI) {
-            Parcelable[] obj = data.getParcelableArrayExtra(CommonActivity.SCAN_RESULT);
-            if (obj != null && obj.length > 0) {
-                //Get one result.
-                if (obj.length == 1) {
-                    if (obj[0] != null && !TextUtils.isEmpty(((HmsScan) obj[0]).getOriginalValue())) {
-                        Toast.makeText(this,((HmsScan) obj[0]).originalValue,Toast.LENGTH_SHORT).show();
+        // Obtain the return value of HmsScan from the value returned by the onActivityResult method by using ScanUtil.RESULT as the key value.
+        if (requestCode == REQUEST_CODE_SCAN) {
+            Object object = data.getParcelableExtra(ScanUtil.RESULT);
+            if (object instanceof HmsScan) {
+                HmsScan obj = (HmsScan) object;
+                if (obj != null) {
+                    String retValue = obj.originalValue;
+                    Toast.makeText(this, retValue, Toast.LENGTH_SHORT).show();
+
+                    try {
+                        String js = "javascript:receiveScanResult('" + retValue + "')";
+                        System.out.println("开始执行 JS 方法：" + js);
+
+                        webView.evaluateJavascript(js, new ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String s) {
+                                //将button显示的文字改成JS返回的字符串
+                                System.out.println("成功接收到扫码返回值：" + s);
+                            }
+                        });
+
+                        //webView.loadUrl("javascript:handleScanResult('" + retValue + "')");
+                    } catch (Exception e) {
+                        System.out.println("未成功调用 JS 方法 handleScanResult");
+                        e.printStackTrace();
+                        // Handle the exception
                     }
-                } else {
-                    Toast.makeText(this,obj[0].describeContents(),Toast.LENGTH_SHORT).show();
-                }
-            }
-            //Customized View
-        } else if (requestCode == REQUEST_CODE_DEFINE) {
-            HmsScan obj = data.getParcelableExtra(DefinedActivity.SCAN_RESULT);
-            if (obj != null) {
-                String retValue = obj.originalValue;
-                Toast.makeText(this, retValue, Toast.LENGTH_SHORT).show();
-
-                try {
-                    String js = "javascript:receiveScanResult('" + retValue + "')";
-                    System.out.println("开始执行 JS 方法：" + js);
-
-                    webView.evaluateJavascript(js, new ValueCallback<String>() {
-                        @Override
-                        public void onReceiveValue(String s) {
-                            //将button显示的文字改成JS返回的字符串
-                            System.out.println("成功接收到扫码返回值：" + s);
-                        }
-                    });
-
-                    //webView.loadUrl("javascript:handleScanResult('" + retValue + "')");
-                } catch (Exception e) {
-                    System.out.println("未成功调用 JS 方法 handleScanResult");
-                    e.printStackTrace();
-                    // Handle the exception
                 }
             }
         }
