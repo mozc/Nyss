@@ -2,6 +2,7 @@ package com.example.nsyy.utils;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.AppOpsManager;
 import android.app.Notification;
@@ -16,8 +17,8 @@ import android.os.Build;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 
-import com.example.nsyy.MainActivity;
 import com.example.nsyy.R;
+import com.example.nsyy.notification.NotificationClickReceiver;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -69,11 +70,17 @@ public class NotificationUtil {
      * @param title
      */
     public void createNotificationForHigh(String title, String message) {
-        // 设置通知的点按操作
-        Intent intent = new Intent(context, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+//        // 设置通知的点按操作
+//        Intent intent = new Intent(context, MainActivity.class);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        Notification notification = new NotificationCompat.Builder(context, mHighChannelId)
+        // todo 组装想要跳转的页面信息 PendingIntent.FLAG_IMMUTABLE 其他的 PendingIntent 可能导致 extra 丢失
+        // todo page_type 1=消息页面  page_no 具体页面
+        Intent intent = new Intent(context, NotificationClickReceiver.class);
+        intent.putExtra("target_page","http://192.168.124.12:6060?aaa=12");
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        @SuppressLint("NotificationTrampoline") Notification notification = new NotificationCompat.Builder(context, mHighChannelId)
                 // 通知标题
                 .setContentTitle(title)
                 // 通知内容

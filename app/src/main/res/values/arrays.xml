@@ -1,6 +1,8 @@
 <resources>
     <string-array name="websites">
         <item>http://192.168.3.12:6060</item>
+<!--        <item>http://192.168.124.22:5173/</item>-->
+<!--        <item>http://192.168.124.12:6060/</item>-->
         <item>http://oa.nsyy.com.cn:6060</item>
         <!-- Add more websites as needed -->
     </string-array>

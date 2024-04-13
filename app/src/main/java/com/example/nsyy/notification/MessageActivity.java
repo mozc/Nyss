@@ -65,18 +65,12 @@ public class MessageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_message);
 
-        //checkNotification(this);
-
         initNotificationChannel();
 
         notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
         registerReceiver(nsyyServerBroadcastReceiver, new IntentFilter("NsyyServerBroadcastReceiver"));
         startService(new Intent(this, NsServerService.class));//启动服务
-
-//        NotificationServices.getInstance().setActivity(this);
-
-
 
         View btn_send_chat = findViewById(R.id.btn_send_chat);
         btn_send_chat.setOnClickListener(new View.OnClickListener() {

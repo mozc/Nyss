@@ -1,7 +1,14 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
+    repositories {
+        // Add the Maven address.
+        maven { url 'https://developer.huawei.com/repo/' }
+    }
+
     dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.1'
         classpath 'com.yanzhenjie.andserver:plugin:2.1.12'
+        classpath 'com.huawei.agconnect:agcp:1.5.2.300'
     }
 }
 

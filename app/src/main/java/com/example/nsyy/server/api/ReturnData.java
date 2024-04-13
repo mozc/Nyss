@@ -32,11 +32,15 @@ public class ReturnData {
     @JSONField(name = "data")
     public Object data;
 
-    public ReturnData(boolean isSuccess, int code, String errorMsg, Object data) {
+    @JSONField(name = "all_unread")
+    public int all_unread;
+
+    public ReturnData(boolean isSuccess, int code, String errorMsg, Object data, int all_unread) {
         this.isSuccess = isSuccess;
         this.code = code;
         this.errorMsg = errorMsg;
         this.data = data;
+        this.all_unread = all_unread;
     }
 
     public ReturnData() {
@@ -74,6 +78,14 @@ public class ReturnData {
         this.data = data;
     }
 
+    public int getAll_unread() {
+        return all_unread;
+    }
+
+    public void setAll_unread(int all_unread) {
+        this.all_unread = all_unread;
+    }
+
     @Override
     public String toString() {
         return "ReturnData{" +
@@ -81,9 +93,9 @@ public class ReturnData {
                 ", code=" + code +
                 ", errorMsg='" + errorMsg + '\'' +
                 ", data=" + data +
+                ", all_unread=" + all_unread +
                 '}';
     }
-
 
 
     /**

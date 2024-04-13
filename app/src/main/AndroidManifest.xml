@@ -32,22 +32,21 @@
     <uses-permission android:name="android.permission.INTERNET" /> <!-- 网络权限 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" /> <!-- 震动权限 -->
-    <uses-permission android:name="android.permission.CAMERA" /> <!-- 摄像头权限 -->
     <uses-feature android:name="android.hardware.camera.autofocus" /> <!-- 自动聚焦权限 -->
+    <uses-feature android:name="android.hardware.camera" />
     <uses-feature
-        android:name="android.hardware.camera"
+        android:name="android.hardware.telephony"
         android:required="true" />
 
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CALL_PHONE" /> <!-- Internal Storage Permissions -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-    <!-- Internal Storage Permissions -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-
-
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" /> <!-- 相机权限 -->
+    <uses-permission android:name="android.permission.CAMERA" /> <!-- 文件读取权限，Android 12及更低版本申请 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> <!-- 读存储（媒体和文件）权限，Android 13及更高版本申请 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".permission.AppApplication"
@@ -59,9 +58,9 @@
         android:requestLegacyExternalStorage="true"
         android:theme="@style/AppTheme"
         tools:ignore="UnusedAttribute">
-<!--        <activity-->
-<!--            android:name=".UpdateActivity"-->
-<!--            android:exported="false" />-->
+        <!-- <activity -->
+        <!-- android:name=".UpdateActivity" -->
+        <!-- android:exported="false" /> -->
         <activity
             android:name=".code_scan.CommonActivity"
             android:exported="false" />
@@ -106,6 +105,18 @@
         <service android:name=".alarm.LongRunningService" />
 
         <receiver android:name=".alarm.AlarmReceiver" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.nsyy.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <receiver android:name=".notification.NotificationClickReceiver"></receiver>
     </application>
 
 </manifest>

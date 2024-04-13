@@ -3,19 +3,26 @@ package com.example.nsyy;
 import static com.example.nsyy.code_scan.common.CodeScanCommon.*;
 
 import android.Manifest;
+import android.app.ActivityManager;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
+import android.os.Environment;
 import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -28,7 +35,8 @@ import android.content.DialogInterface;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import com.example.nsyy.alarm.LongRunningService;
 import com.example.nsyy.code_scan.CommonActivity;
@@ -37,6 +45,7 @@ import com.example.nsyy.config.MySharedPreferences;
 import com.example.nsyy.message.FileHelper;
 import com.example.nsyy.service.NsServerService;
 import com.example.nsyy.service.NsyyServerBroadcastReceiver;
+import com.example.nsyy.utils.AppVersionUtil;
 import com.example.nsyy.utils.BlueToothUtil;
 import com.example.nsyy.utils.LocationUtil;
 import com.example.nsyy.utils.NotificationUtil;
@@ -46,20 +55,27 @@ import com.huawei.hms.hmsscankit.ScanUtil;
 import com.huawei.hms.ml.scan.HmsScan;
 import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
 
-public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
+import java.io.File;
+import java.util.Base64;
+import java.util.List;
 
-    private static final int MINIMUM_VERSION_CODE = 10;
+public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
 
     public static final String TAG = "Nsyy";
 
     private static String LOAD_RUL = "";
 
-    // 测试扫码功能
-    //private static final String LOAD_RUL = "https://dnswc2-vue-demo.site.laf.dev/";
     private WebView webView;
-    private SwipeRefreshLayout swipeRefreshLayout;
+//    private SwipeRefreshLayout swipeRefreshLayout;
 
-    private int version = Build.VERSION.SDK_INT;
+    private final BroadcastReceiver noticeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String targetPage = intent.getStringExtra("target_page");
+            // 在 WebView 中加载目标页面
+            webView.loadUrl(targetPage);
+        }
+    };
 
     private final NsyyServerBroadcastReceiver nsyyServerBroadcastReceiver =
             new NsyyServerBroadcastReceiver(new NsyyServerBroadcastReceiver.ServerStateListener() {
@@ -86,20 +102,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        AppVersionUtil.getInstance().init(this);
+
         MySharedPreferences.init(this);
-
-//        // TODO 当前最新版本，最小支持的版本具体如何获取？ 由 OA 提供接口提供？
-//        // 判断当前版本，如果版本太小，直接提醒用户升级
-//        int currentVersionCode = getCurrentVersionCode();
-//        // Storing app version
-//        SharedPreferences.Editor editor = MySharedPreferences.getSharedPreferences().edit();
-//        editor.putInt("currentVersion", currentVersionCode);
-//        editor.apply();
-//        if (currentVersionCode < MINIMUM_VERSION_CODE) {
-//            showUpgradePrompt();
-//        }
-
-
         // 初始化 WebView
         webView = findViewById(R.id.webView);
         String loadUrl = MySharedPreferences.getSharedPreferences().getString("load_url", "");
@@ -136,33 +141,12 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // 检查是否开启蓝牙权限 & 初始化
         PermissionUtil.checkBlueToothPermission(this);
         BlueToothUtil.getInstance().init(this);
+
+        // 注册广播接收器
+        registerReceiver(noticeReceiver, new IntentFilter("LOAD_TARGET_PAGE"));
+
     }
 
-//    private int getCurrentVersionCode() {
-//        try {
-//            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return -1;
-//        }
-//    }
-//
-//    private void showUpgradePrompt() {
-//        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-//        builder.setTitle("Update Required");
-//        builder.setMessage("Your app is outdated. Please update to the latest version.");
-//
-//        // Positive button opens Google Play Store for the app
-//        builder.setPositiveButton("Update", new DialogInterface.OnClickListener() {
-//            @Override
-//            public void onClick(DialogInterface dialog, int which) {
-//                startActivity(new Intent(MainActivity.this, UpdateActivity.class));
-//            }
-//        });
-//
-//        // Show the dialog
-//        builder.show();
-//    }
 
     private void showWebsiteChooserDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -197,25 +181,28 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     }
 
     private void initView() {
-        swipeRefreshLayout = findViewById(R.id.refreshLayout);
-        // 配置 SwipeRefreshLayout
-        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                // 检查 WebView 是否为空
-                if (webView == null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                    return;
-                }
-                // 在 UI 线程上执行 WebView 刷新
-                new Handler().post(new Runnable() {
-                    @Override
-                    public void run() {
-                        webView.reload();
-                    }
-                });
-            }
-        });
+//        swipeRefreshLayout = findViewById(R.id.refreshLayout);
+//        // 配置 SwipeRefreshLayout
+//        swipeRefreshLayout.setOnRefreshListener(null);
+//        // 隐藏加载图标
+//        swipeRefreshLayout.setRefreshing(false);
+//        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+//            @Override
+//            public void onRefresh() {
+//                // 检查 WebView 是否为空
+//                if (webView == null) {
+//                    swipeRefreshLayout.setRefreshing(false);
+//                    return;
+//                }
+//                // 在 UI 线程上执行 WebView 刷新
+//                new Handler().post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        webView.reload();
+//                    }
+//                });
+//            }
+//        });
 
         if (webView == null) {
             webView = findViewById(R.id.webView);
@@ -224,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // Enable Javascript
         WebSettings webSettings = webView.getSettings();
         webSettings.setDomStorageEnabled(true);
-        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         // 设置允许JS弹窗
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         // 设置 WebView 允许执行 JavaScript 脚本
@@ -235,8 +222,61 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
         // 确保跳转到另一个网页时仍然在当前 WebView 中显示,而不是调用浏览器打开
         webView.setWebViewClient(new WebViewClient() {
-            public void onPageFinished(WebView view, String url) {
-                swipeRefreshLayout.setRefreshing(false);
+//            public void onPageFinished(WebView view, String url) {
+//                swipeRefreshLayout.setRefreshing(false);
+//            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                // 在这里根据需要判断是否要拦截请求  返回 true 表示拦截请求，返回 false 表示不拦截请求
+
+                String fileName = "";
+                // 邮件附件下载
+                if (url.contains("gyl/workstation/mail/download_attachment")) {
+
+                    // 找到最后一个 '/' 的索引
+                    int lastIndex = url.lastIndexOf('/');
+                    // 截取最后一个 '/' 后面的部分
+                    String base64String = url.substring(lastIndex + 1);
+                    base64String = base64String.replace("&", "/");
+                    String param = base64decode(base64String);
+                    param = param.replace(" ", "");
+                    String[] params = param.split("#");
+
+                    if (params.length != 3) {
+                        return false;
+                    }
+
+                    url = params[1];
+                    String date = params[2];
+                    date = date.replace(" ", "");
+                    date = date.replace(":", "");
+                    date = date.replace("-", "");
+
+                    String originalFileName = params[0];
+                    int dotIndex = originalFileName.lastIndexOf(".");
+                    fileName = originalFileName.substring(0, dotIndex);
+                    String extension = originalFileName.substring(dotIndex);
+
+                    fileName = fileName + "-" +date + extension;
+                } else if (url.contains("att_download?save_path=")) {
+                    // app 安装包下载
+                    String base64String = url.substring(url.indexOf("save_path=") + "save_path=".length());
+                    fileName = base64decode(base64String);
+                } else {
+                    return false;
+                }
+
+                // 请求存储权限
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_FILE_PERMISSION_CODE);
+                } else {
+                    // 下载文件
+                    startDownload(url, fileName);
+                }
+
+                return true;
             }
         });
 
@@ -285,13 +325,90 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         webView.loadUrl(LOAD_RUL);
     }
 
-    @JavascriptInterface
-    public void scanCode(){
-        // 多种模式可选： https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-overview-0000001050282308
-        //loadScanKitBtnClick();
-        newViewBtnClick();
-        //multiProcessorSynBtnClick();
-        //multiProcessorAsynBtnClick();
+    protected String base64decode(String encodedString) {
+        // 解码 Base64 编码的字符串
+        byte[] decodedBytes = new byte[0];
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            decodedBytes = Base64.getDecoder().decode(encodedString);
+        }
+
+        // 将字节数组转换为字符串
+        String decodedString = new String(decodedBytes);
+        return decodedString;
+    }
+
+    private void startDownload(String url, String fileName) {
+
+        // 获取下载目录
+        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        // 形成完整的文件地址
+        File file = new File(downloadsDir, fileName);
+        // 判断文件是否存在
+        if (file.exists()) {
+            // 在此处处理下载完成后 跳转到文件管理器查看下载的文件
+            openDownloadFile(fileName);
+            return;
+        }
+
+        // 获取文件扩展名
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        request.setDescription("Downloading file...");
+        request.setTitle(fileName);
+        request.allowScanningByMediaScanner();
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        long downloadId = dm.enqueue(request);
+
+        // 下载完成广播接收器
+        String finalFileName = fileName;
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (id == downloadId) {
+                    openDownloadFile(finalFileName);
+                }
+            }
+        };
+
+        // 注册广播接收器
+        registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+    }
+
+    private void openDownloadFile(String fileName) {
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName);
+
+        Uri uri = FileProvider.getUriForFile(webView.getContext(), "com.example.nsyy.fileprovider", file);
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        if (fileName.toLowerCase().endsWith("png") || fileName.toLowerCase().endsWith("jpg") || fileName.toLowerCase().endsWith("jpeg")
+                || fileName.toLowerCase().endsWith("gif") || fileName.toLowerCase().endsWith("webp")) {
+            intent.setDataAndType(uri, "image/*");
+        } else if (fileName.toLowerCase().endsWith("pdf")) {
+            intent.setDataAndType(uri, "application/pdf");
+        } else if (fileName.toLowerCase().endsWith(".docx") || fileName.toLowerCase().endsWith(".doc")) {
+            intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        } else if (fileName.toLowerCase().endsWith(".xlsx") || fileName.toLowerCase().endsWith("xls")) {
+            intent.setDataAndType(uri, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        } else if (fileName.toLowerCase().endsWith(".apk")) {
+            // 打开安装包
+            intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            intent.addCategory(Intent.CATEGORY_DEFAULT);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+            //intent.setDataAndType(uri, "application/vnd.android.package-archive");
+            // 设置 Intent 的 flags 为 FLAG_ACTIVITY_NEW_TASK，表示新建一个任务进行安装
+            //intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        } else {
+            intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Uri downloadUri = Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getPath());
+            intent.setDataAndType(downloadUri, "*/*");// 设置要显示的文件类型为所有类型
+        }
+        webView.getContext().startActivity(intent);
     }
 
     // 接管返回按键的响应
@@ -302,6 +419,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             webView.goBack();
             return;
         }
+        FileHelper.RUN_IN_BACKGROUND = true;
         // 这里返回后台运行，而不是直接杀死
         moveTaskToBack(false);
 //        // 否则退出应用程序
@@ -311,23 +429,62 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     @Override
     protected void onResume() {
         super.onResume();
+        System.out.println("===> webview resume");
+        FileHelper.RUN_IN_BACKGROUND = false;
+
+        if (isAppInBackground()) {
+            bringWebViewActivityToFront();
+        }
+
         webView.onResume();
+    }
+
+    private boolean isAppInBackground() {
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
+        if (!tasks.isEmpty()) {
+            ComponentName topActivity = tasks.get(0).topActivity;
+            return !topActivity.getPackageName().equals(getPackageName());
+        }
+        return false;
+    }
+
+    private void bringWebViewActivityToFront() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        System.out.println("===> webview 暂停");
+        FileHelper.RUN_IN_BACKGROUND = true;
         webView.onPause();
+
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         webView.destroy();
+        FileHelper.RUN_IN_BACKGROUND = true;
         unregisterReceiver(nsyyServerBroadcastReceiver);
         stopService(new Intent(this, NsServerService.class));//停止服务
+
+        // 注销广播接收器
+        unregisterReceiver(noticeReceiver);
     }
 
+
+    @JavascriptInterface
+    public void scanCode(){
+        // 多种模式可选： https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-overview-0000001050282308
+//        loadScanKitBtnClick();
+        newViewBtnClick();
+//        multiProcessorSynBtnClick();
+//        multiProcessorAsynBtnClick();
+    }
 
     // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
 
@@ -342,14 +499,18 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
      * Call the customized view.
      */
     public void newViewBtnClick() {
-        requestPermission(DEFINED_CODE, DECODE);
+//        requestPermission(DEFINED_CODE, DECODE);
+        // CAMERA_REQ_CODE为用户自定义，用于接收权限校验结果的请求码
+        this.requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, DEFINED_CODE);
     }
 
     /**
      * Call the MultiProcessor API in synchronous mode.
      */
     public void multiProcessorSynBtnClick() {
-        requestPermission(MULTIPROCESSOR_SYN_CODE, DECODE);
+//        requestPermission(MULTIPROCESSOR_SYN_CODE, DECODE);
+        this.requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE}, MULTIPROCESSOR_SYN_CODE);
+
     }
 
     /**
@@ -443,6 +604,17 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             } catch (Exception e) {
                 e.printStackTrace();
                 // Handle the exception
+            }
+        }
+
+        if (requestCode == REQUEST_FILE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 用户授予了存储权限，开始下载
+                Toast.makeText(MainActivity.this, "存储权限已获取，请重新点击下载", Toast.LENGTH_SHORT).show();
+
+            } else {
+                // 用户拒绝了存储权限，显示提示信息
+                Toast.makeText(MainActivity.this, "没有存储权限，无法下载文件", Toast.LENGTH_SHORT).show();
             }
         }
     }

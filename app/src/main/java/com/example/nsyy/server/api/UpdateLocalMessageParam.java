@@ -2,61 +2,50 @@ package com.example.nsyy.server.api;
 
 public class UpdateLocalMessageParam {
 
-    public String url;
+    public String update_msg_url;
+    public String update_chat_list_url;
     public Integer cur_user_id;
-    public Integer chat_user_id;
-    public Integer chat_type;
 
     public UpdateLocalMessageParam() {
 
     }
 
-    public UpdateLocalMessageParam(String url, Integer cur_user_id, Integer chat_user_id, Integer group_id) {
-        this.url = url;
+    public UpdateLocalMessageParam(String update_msg_url, String update_chat_list_url, Integer cur_user_id) {
+        this.update_msg_url = update_msg_url;
+        this.update_chat_list_url = update_chat_list_url;
         this.cur_user_id = cur_user_id;
-        this.chat_user_id = chat_user_id;
-        this.chat_type = chat_type;
     }
 
-    public String getUrl() {
-        return url;
+    public String getUpdate_msg_url() {
+        return update_msg_url;
     }
 
-    public void setUrl(String url) {
-        this.url = url;
+    public void setUpdate_msg_url(String update_msg_url) {
+        this.update_msg_url = update_msg_url;
+    }
+
+    public String getUpdate_chat_list_url() {
+        return update_chat_list_url;
+    }
+
+    public void setUpdate_chat_list_url(String update_chat_list_url) {
+        this.update_chat_list_url = update_chat_list_url;
     }
 
     public Integer getCur_user_id() {
         return cur_user_id;
     }
 
-    public void setCur_user_id(int cur_user_id) {
+    public void setCur_user_id(Integer cur_user_id) {
         this.cur_user_id = cur_user_id;
-    }
-
-    public Integer getChat_user_id() {
-        return chat_user_id;
-    }
-
-    public void setChat_user_id(int chat_user_id) {
-        this.chat_user_id = chat_user_id;
-    }
-
-    public Integer getChat_type() {
-        return chat_type;
-    }
-
-    public void setChat_type(int chat_type) {
-        this.chat_type = chat_type;
     }
 
     @Override
     public String toString() {
-        return "ReadChatMessageParam{" +
-                "url='" + url + '\'' +
+        return "UpdateLocalMessageParam{" +
+                "update_msg_url='" + update_msg_url + '\'' +
+                ", update_chat_list_url='" + update_chat_list_url + '\'' +
                 ", cur_user_id=" + cur_user_id +
-                ", chat_user_id=" + chat_user_id +
-                ", chat_type=" + chat_type +
                 '}';
     }
 }

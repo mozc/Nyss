@@ -9,6 +9,7 @@ public class CodeScanCommon {
     public static final int BITMAP_CODE = 333;
     public static final int MULTIPROCESSOR_SYN_CODE = 444;
     public static final int MULTIPROCESSOR_ASYN_CODE = 555;
+    public static final int REQUEST_FILE_PERMISSION_CODE = 666;
     public static final int DECODE = 1;
     public static final int GENERATE = 2;
     public static final int REQUEST_CODE_SCAN_ONE = 0X01;

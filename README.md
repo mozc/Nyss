@@ -244,6 +244,8 @@ Android 中暂时没有做到和 IOS 同样的想过，主要因为目前蓝牙�
 
 接入华为统一扫码服务：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
 
+按步骤（添加SDK）接入： https://developer.huawei.com/consumer/cn/service/josp/agc/index.html#/myProject/388421841221765522/97458334310914890?appId=109560375
+
 该功能主要实现在 [code_scan](./app/src/main/java/com/example/nsyy/code_scan)
 
 华为提供4种调用方式，可以根据需求选择相应的调用方式构建扫码功能。
@@ -418,3 +420,95 @@ https://developer.aliyun.com/article/684728
 
 密码： 123456
 
+## webview 下载文件到手机
+
+https://juejin.cn/s/webview%20h5%E4%B8%8B%E8%BD%BD%E6%96%87%E4%BB%B6
+
+
+## 通知点击事件
+
+https://blog.csdn.net/weixin_42776111/article/details/103351699
+
+```java
+// NotificationUtil.createNotificationForHigh
+
+// todo 组装想要跳转的页面信息 PendingIntent.FLAG_IMMUTABLE 其他的 PendingIntent 可能导致 extra 丢失
+// todo page_type 1=消息页面  page_no 具体页面
+        Intent intent = new Intent(context, NotificationClickReceiver.class);
+        intent.putExtra("target_page","http://192.168.124.12:6060?aaa=12");
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+```
+
+```java
+// 监听通知点击事件
+public class NotificationClickReceiver extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        String targetPage = intent.getStringExtra("target_page");
+        Log.i("TAG", "============================ " +
+                "userClick:我被点击啦！！！ targetPage = " + targetPage);
+
+        // 发送广播到 MainActivity
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction("LOAD_TARGET_PAGE");
+        broadcastIntent.putExtra("target_page", targetPage);
+        context.sendBroadcast(broadcastIntent);
+    }
+
+}
+// 将要跳转的页面信息，通过 target_page 传递给 MainActivity
+
+// NotificationClickReceiver 需要在 AndroidManifest 中注册
+
+<receiver
+            android:name=".notification.NotificationClickReceiver">
+</receiver>
+```
+
+```java
+// 监听广播事件
+    private final BroadcastReceiver noticeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String targetPage = intent.getStringExtra("target_page");
+            Log.i("TAG", "============================ 通知触发webview  " + targetPage);
+
+            // 在 WebView 中加载目标页面
+            webView.loadUrl(targetPage);
+        }
+    };
+```
+
+```java
+// MainActivity 如果时在后台，将应用带到前台
+
+@Override
+protected void onResume() {
+        super.onResume();
+        // ...
+
+        if (isAppInBackground()) {
+        bringWebViewActivityToFront();
+        }
+
+        // ...
+        }
+
+private boolean isAppInBackground() {
+        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
+        if (!tasks.isEmpty()) {
+        ComponentName topActivity = tasks.get(0).topActivity;
+        return !topActivity.getPackageName().equals(getPackageName());
+        }
+        return false;
+        }
+
+private void bringWebViewActivityToFront() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        }
+```

@@ -3,6 +3,8 @@ plugins {
 }
 
 apply plugin: 'com.yanzhenjie.andserver'
+// Add the information to the bottom of the file.
+apply plugin: 'com.huawei.agconnect'
 
 android {
     namespace 'com.example.nsyy'
@@ -44,7 +46,7 @@ android {
 
 //构建时间
 def generateTime() {
-    return new Date().format("yyyy_MM_dd_HH_mm_ss")
+    return new Date().format("yyyyMMdd")
 }
 
 dependencies {
@@ -80,6 +82,8 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
     implementation 'com.alibaba:fastjson:1.1.54.android'
 
+    // Add dependencies.
+    implementation 'com.huawei.agconnect:agconnect-core:1.5.2.300'
     implementation 'com.huawei.hms:scanplus:2.12.0.301'
 
 }
