@@ -10,10 +10,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -33,6 +36,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import android.util.Base64;
 
 import com.example.nsyy.alarm.LongRunningService;
 import com.example.nsyy.config.MySharedPreferences;
@@ -49,20 +53,27 @@ import com.huawei.hms.hmsscankit.ScanUtil;
 import com.huawei.hms.ml.scan.HmsScan;
 import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.util.Base64;
+import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
     public static final int DEFAULT_VIEW = 0x22;
     private static final int REQUEST_CODE_SCAN = 0X01;
     public static final int REQUEST_FILE_PERMISSION_CODE = 666;
+    public static final int CAMERA_PERMISSION_REQUEST_CODE= 777;
     public static final String TAG = "Nsyy";
 
     private static String LOAD_RUL = "";
 
     private WebView webView;
 //    private SwipeRefreshLayout swipeRefreshLayout;
+
+    public static String last_camera_img_name = null;
+    private final static int CAMERA_FILE_RESULT_CODE = 10001;
 
     private final BroadcastReceiver noticeReceiver = new BroadcastReceiver() {
         @Override
@@ -216,6 +227,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // Add the JavaScriptInterface to the WebView
         webView.addJavascriptInterface(this, "AndroidInterface");
 
+        webSettings.setAllowContentAccess(true); // 是否可访问Content Provider的资源，默认值 true
+        webSettings.setAllowFileAccess(true);    // 是否可访问本地文件，默认值 true
+
         // 确保跳转到另一个网页时仍然在当前 WebView 中显示,而不是调用浏览器打开
         webView.setWebViewClient(new WebViewClient() {
 //            public void onPageFinished(WebView view, String url) {
@@ -317,6 +331,8 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
             }
         });
 
+        // 清除之前的缓存
+        webView.clearCache(true);
         // 加载 南石OA
         webView.loadUrl(LOAD_RUL);
     }
@@ -325,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // 解码 Base64 编码的字符串
         byte[] decodedBytes = new byte[0];
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            decodedBytes = Base64.getDecoder().decode(encodedString);
+            decodedBytes = java.util.Base64.getDecoder().decode(encodedString);
         }
 
         // 将字节数组转换为字符串
@@ -472,6 +488,30 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         unregisterReceiver(noticeReceiver);
     }
 
+
+    @JavascriptInterface
+    public void takePhoto(){
+        // 检查是否已经获取相机权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            // 请求相机权限
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
+        }
+
+        String filename = "CAMERA_IMG_" + DateFormat.format("yyyyMMdd_hhmmss", Calendar.getInstance(Locale.CHINA)) + ".jpg";
+        // 更新文件名字
+        last_camera_img_name = filename;
+
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+        Uri imageUri = FileProvider.getUriForFile(webView.getContext(), "com.example.nsyy.fileprovider", file);
+
+        Intent captureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            captureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION); //添加这一句表示对目标应用临时授权该Uri所代表的文件
+        }
+        captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        startActivityForResult(captureIntent, CAMERA_FILE_RESULT_CODE);
+    }
+
     @JavascriptInterface
     public void scanCode(){
         // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
@@ -531,15 +571,42 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
      * @param resultCode Result code.
      * @param data        Result.
      */
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         //receive result after your activity finished scanning
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != RESULT_OK || data == null) {
+        if (resultCode != RESULT_OK ) {
             return;
         }
-        // Obtain the return value of HmsScan from the value returned by the onActivityResult method by using ScanUtil.RESULT as the key value.
+
+        // 处理拍照上传
+        if (requestCode == CAMERA_FILE_RESULT_CODE && data == null) {
+            // 拍照结果 TODO 通过 js 返回
+            String base64Str = compressAndEncodeImage();
+            System.out.println(base64Str);
+            base64Str = base64Str.replace("\n", "");
+            String jsonString = "{\"data\": \"%s\"}";
+            String jsonWithUrlSafeBase64 = String.format(jsonString, base64Str);
+
+            try {
+                String js = "javascript:receiveCameraResult('" + jsonWithUrlSafeBase64 + "')";
+                System.out.println("开始执行 JS 方法：" + js);
+                webView.evaluateJavascript(js, new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String s) {
+                        //将button显示的文字改成JS返回的字符串
+                        System.out.println("成功接收到扫码返回值：" + s);
+                    }
+                });
+            } catch (Exception e) {
+                System.out.println("未成功调用 JS 方法 handleCameraResult");
+                e.printStackTrace();
+                // Handle the exception
+            }
+        }
+
+        // 处理扫码结果
         if (requestCode == REQUEST_CODE_SCAN) {
             Object object = data.getParcelableExtra(ScanUtil.RESULT);
             if (object instanceof HmsScan) {
@@ -571,5 +638,31 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         }
     }
 
+
+    /**
+     * 压缩图片
+     * @return
+     */
+    public static String compressAndEncodeImage() {
+        // 压缩图片
+        Bitmap compressedBitmap = null;
+        try {
+            compressedBitmap = PhotoUtils.getBitmapFromFile(last_camera_img_name);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // 将压缩后的 Bitmap 对象转换为 Base64 字符串
+        String base64Image = bitmapToBase64(compressedBitmap);
+        compressedBitmap.recycle();
+        return base64Image;
+    }
+
+    private static String bitmapToBase64(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
 
 }
