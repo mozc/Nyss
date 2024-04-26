@@ -130,14 +130,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // 检查权限: 这里需要开启位置权限 & 位置服务 TODO 其他权限
         PermissionUtil.checkLocationPermission(this);
 
-        // 启动 web server
-        registerReceiver(nsyyServerBroadcastReceiver, new IntentFilter("NsyyServerBroadcastReceiver"));
-        startService(new Intent(this, NsServerService.class));
-
         // 消息通知
         PermissionUtil.checkNotification(this);
         NotificationUtil.getInstance().setContext(this);
         NotificationUtil.getInstance().initNotificationChannel();
+
+        // 启动 web server
+        registerReceiver(nsyyServerBroadcastReceiver, new IntentFilter("NsyyServerBroadcastReceiver"));
+        startService(new Intent(this, NsServerService.class));
 
         FileHelper.getInstance().setContext(this);
 

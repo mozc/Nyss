@@ -109,6 +109,28 @@ public class NsyyController {
         }
     }
 
+    @CrossOrigin(methods = {RequestMethod.GET})
+    @PostMapping(path = "/speech")
+    public ReturnData speech(@RequestBody Notification notification) {
+        ReturnData returnData = new ReturnData();
+        try {
+            NotificationUtil.getInstance().speechInfo(notification.context);
+            returnData.setSuccess(true);
+            returnData.setCode(200);
+            return returnData;
+        } catch (Exception e) {
+            returnData.setCode(FAILED_TO_GET_LOCATION);
+            returnData.setSuccess(false);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("NotificationUtil: " + NotificationUtil.getInstance().toString());
+
+            returnData.setErrorMsg("Failed notification: Please try again later." + sb.toString());
+            return returnData;
+        }
+    }
+
+
     /**
      * 获取用户信息
      *

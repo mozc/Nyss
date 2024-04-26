@@ -13,6 +13,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.os.Build;
+import android.speech.tts.TextToSpeech;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
@@ -22,6 +24,7 @@ import com.example.nsyy.notification.NotificationClickReceiver;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.Random;
 
 public class NotificationUtil {
@@ -35,10 +38,27 @@ public class NotificationUtil {
     private NotificationManager notificationManager;
     private volatile static NotificationUtil uniqueInstance;
     private Context context;
+    private TextToSpeech textToSpeech;
 
     public void setContext(Context context) {
         this.context = context;
         this.notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        this.textToSpeech = new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    // 设置语言为默认语言
+                    int result = textToSpeech.setLanguage(Locale.getDefault());
+
+                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        Toast.makeText(context, "Language not supported", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(context, "Initialization failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     @Override
@@ -63,6 +83,15 @@ public class NotificationUtil {
 
     private NotificationUtil() {
     }
+
+    /**
+     * 语音播报
+     * @param msg
+     */
+    public void speechInfo(String msg) {
+        textToSpeech.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "text_to_speech");
+    }
+
 
     /**
      * 消息通知

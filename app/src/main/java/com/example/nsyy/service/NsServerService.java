@@ -68,7 +68,7 @@ public class NsServerService extends Service {
                 .build();
 
         LocationUtil.getInstance().setContext(this);
-        NotificationUtil.getInstance().setContext(this);
+//        NotificationUtil.getInstance().setContext(this);
 
 
         /**
