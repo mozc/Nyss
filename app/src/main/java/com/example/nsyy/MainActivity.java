@@ -110,8 +110,25 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         setContentView(R.layout.activity_main);
 
         AppVersionUtil.getInstance().init(this);
-
         MySharedPreferences.init(this);
+        // 检查权限: 这里需要开启位置权限 & 位置服务
+        PermissionUtil.checkLocationPermission(this);
+
+        // 消息通知
+        PermissionUtil.checkNotification(this);
+        NotificationUtil.getInstance().setContext(this);
+        NotificationUtil.getInstance().initNotificationChannel();
+
+        FileHelper.getInstance().setContext(this);
+
+        // 检查是否开启位置服务
+        LocationUtil.getInstance().setContext(this);
+        LocationUtil.getInstance().initGPS();
+
+        // 检查是否开启蓝牙权限 & 初始化
+        PermissionUtil.checkBlueToothPermission(this);
+        BlueToothUtil.getInstance().init(this);
+
         // 初始化 WebView
         webView = findViewById(R.id.webView);
         String loadUrl = MySharedPreferences.getSharedPreferences().getString("load_url", "");
@@ -127,31 +144,12 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         Intent intent = new Intent(this, LongRunningService.class);
         startService(intent);
 
-        // 检查权限: 这里需要开启位置权限 & 位置服务 TODO 其他权限
-        PermissionUtil.checkLocationPermission(this);
-
-        // 消息通知
-        PermissionUtil.checkNotification(this);
-        NotificationUtil.getInstance().setContext(this);
-        NotificationUtil.getInstance().initNotificationChannel();
-
         // 启动 web server
         registerReceiver(nsyyServerBroadcastReceiver, new IntentFilter("NsyyServerBroadcastReceiver"));
         startService(new Intent(this, NsServerService.class));
 
-        FileHelper.getInstance().setContext(this);
-
-        // 检查是否开启位置服务
-        LocationUtil.getInstance().setContext(this);
-        LocationUtil.getInstance().initGPS();
-
-        // 检查是否开启蓝牙权限 & 初始化
-        PermissionUtil.checkBlueToothPermission(this);
-        BlueToothUtil.getInstance().init(this);
-
         // 注册广播接收器
         registerReceiver(noticeReceiver, new IntentFilter("LOAD_TARGET_PAGE"));
-
     }
 
 
