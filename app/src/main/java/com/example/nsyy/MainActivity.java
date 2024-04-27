@@ -27,6 +27,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
 import android.widget.Toast;
+import androidx.core.app.ActivityOptionsCompat;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -49,9 +50,11 @@ import com.example.nsyy.utils.LocationUtil;
 import com.example.nsyy.utils.NotificationUtil;
 import com.example.nsyy.utils.PermissionUtil;
 
+import com.example.nsyy.vivo_scan.VivoQRCodeScanActivity;
 import com.huawei.hms.hmsscankit.ScanUtil;
 import com.huawei.hms.ml.scan.HmsScan;
 import com.huawei.hms.ml.scan.HmsScanAnalyzerOptions;
+import com.king.camera.scan.CameraScan;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -63,6 +66,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
     public static final int DEFAULT_VIEW = 0x22;
     private static final int REQUEST_CODE_SCAN = 0X01;
+    private static final int REQUEST_CODE_VIVO_SCAN = 0X02;
     public static final int REQUEST_FILE_PERMISSION_CODE = 666;
     public static final int CAMERA_PERMISSION_REQUEST_CODE= 777;
     public static final String TAG = "Nsyy";
@@ -74,6 +78,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
 
     public static String last_camera_img_name = null;
     private final static int CAMERA_FILE_RESULT_CODE = 10001;
+
+    private String manufacturer = Build.MANUFACTURER;
+    private String model = Build.MODEL;
 
     private final BroadcastReceiver noticeReceiver = new BroadcastReceiver() {
         @Override
@@ -515,7 +522,18 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
         // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
         // 官方案例： https://github.com/huaweicodelabs/ScanKit/blob/master/DefaultView-java/app/src/main/java/com/example/scankitdemo/MainActivity.java
 
-        newViewBtnClick();
+        if (manufacturer.equalsIgnoreCase("vivo") || manufacturer.equalsIgnoreCase("oppo")) {
+            // vivo oppo 使用 zxing lite 扫码
+            vivoScan(VivoQRCodeScanActivity.class);
+        } else {
+            newViewBtnClick();
+        }
+    }
+
+    private void vivoScan(Class<?> cls) {
+        ActivityOptionsCompat optionsCompat = ActivityOptionsCompat.makeCustomAnimation(this, R.anim.in, R.anim.out);
+        Intent intent = new Intent(this, cls);
+        ActivityCompat.startActivityForResult(this, intent, REQUEST_CODE_VIVO_SCAN, optionsCompat.toBundle());
     }
 
     /**
@@ -631,6 +649,31 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
                         e.printStackTrace();
                         // Handle the exception
                     }
+                }
+            }
+        }
+
+        if (requestCode == REQUEST_CODE_VIVO_SCAN) {
+            String result = CameraScan.parseScanResult(data);
+            if (result != null) {
+                Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+                try {
+                    String js = "javascript:receiveScanResult('" + result + "')";
+                    System.out.println("开始执行 JS 方法：" + js);
+
+                    webView.evaluateJavascript(js, new ValueCallback<String>() {
+                        @Override
+                        public void onReceiveValue(String s) {
+                            //将button显示的文字改成JS返回的字符串
+                            System.out.println("成功接收到扫码返回值：" + s);
+                        }
+                    });
+
+                    //webView.loadUrl("javascript:handleScanResult('" + retValue + "')");
+                } catch (Exception e) {
+                    System.out.println("未成功调用 JS 方法 handleScanResult");
+                    e.printStackTrace();
+                    // Handle the exception
                 }
             }
         }
