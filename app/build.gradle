@@ -8,12 +8,12 @@ apply plugin: 'com.huawei.agconnect'
 
 android {
     namespace 'com.example.nsyy'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.example.nsyy"
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
