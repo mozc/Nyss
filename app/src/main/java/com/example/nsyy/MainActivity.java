@@ -498,8 +498,9 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     public void takePhoto(){
         // 检查是否已经获取相机权限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            // 请求相机权限
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
+            // 请求相机权限 和 存储权限
+            String[] permissions = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            ActivityCompat.requestPermissions(this, permissions, CAMERA_PERMISSION_REQUEST_CODE);
         }
 
         String filename = "CAMERA_IMG_" + DateFormat.format("yyyyMMdd_hhmmss", Calendar.getInstance(Locale.CHINA)) + ".jpg";
@@ -521,13 +522,14 @@ public class MainActivity extends AppCompatActivity implements ActivityCompat.On
     public void scanCode(){
         // 接入华为统一扫码功能：https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/android-dev-process-0000001050043953
         // 官方案例： https://github.com/huaweicodelabs/ScanKit/blob/master/DefaultView-java/app/src/main/java/com/example/scankitdemo/MainActivity.java
-
-        if (manufacturer.equalsIgnoreCase("vivo") || manufacturer.equalsIgnoreCase("oppo")) {
-            // vivo oppo 使用 zxing lite 扫码
-            vivoScan(VivoQRCodeScanActivity.class);
-        } else {
-            newViewBtnClick();
-        }
+        vivoScan(VivoQRCodeScanActivity.class);
+//        if (manufacturer.equalsIgnoreCase("vivo") || manufacturer.equalsIgnoreCase("oppo") ||
+//                manufacturer.equalsIgnoreCase("honor")) {
+//            // vivo oppo 使用 zxing lite 扫码
+//            vivoScan(VivoQRCodeScanActivity.class);
+//        } else {
+//            newViewBtnClick();
+//        }
     }
 
     private void vivoScan(Class<?> cls) {
